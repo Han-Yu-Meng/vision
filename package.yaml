@@ -1,0 +1,8 @@
+name: "vision"
+version: "0.1.0"
+description: "Vision algorithm packages"
+maintainers:
+  - name: "fins"
+    email: "fins@sjtu.edu.cn"
+licenses:
+  - "MIT"
