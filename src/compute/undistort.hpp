@@ -75,7 +75,7 @@ public:
 
     // Check if parameters are valid. If not, pass through original image.
     if (camera_matrix_.empty() || dist_coeffs_.empty()) {
-      send<0>(*msg, msg.event_time);
+      send<0>(*msg, msg.acq_time);
       return;
     }
 
@@ -88,7 +88,7 @@ public:
 
     cv::Mat undistorted;
     cv::remap(*msg, undistorted, map1_, map2_, cv::INTER_LINEAR);
-    send<0>(undistorted, msg.event_time);
+    send<0>(undistorted, msg.acq_time);
   }
 
 private:
