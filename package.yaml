@@ -4,5 +4,7 @@ description: "Vision algorithm packages"
 maintainers:
   - name: "fins"
     email: "fins@sjtu.edu.cn"
+depends:
+  OpenCV: "system"
 licenses:
   - "MIT"

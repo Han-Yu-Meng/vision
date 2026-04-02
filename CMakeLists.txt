@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(vision)
 
-find_package(OpenCV 4.7.0 REQUIRED)
+find_package(OpenCV REQUIRED)
 
 set(CMAKE_SKIP_BUILD_RPATH           FALSE)
 set(CMAKE_BUILD_WITH_INSTALL_RPATH    TRUE) 
