@@ -8,14 +8,30 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: "20.04", distro: "foxy",   arch: "amd64", image: "ros:foxy-ros-base" }
+          - { os: "20.04", distro: "foxy",   arch: "arm64", image: "arm64v8/ros:foxy-ros-base" }
+          - { os: "22.04", distro: "humble", arch: "amd64", image: "ros:humble-ros-base" }
+          - { os: "22.04", distro: "humble", arch: "arm64", image: "arm64v8/ros:humble-ros-base" }
+          - { os: "24.04", distro: "jazzy",  arch: "amd64", image: "ros:jazzy-ros-base" }
+          - { os: "24.04", distro: "jazzy",  arch: "arm64", image: "arm64v8/ros:jazzy-ros-base" }
+
     container:
-      image: ros:humble-ros-base
+      image: ${{ matrix.image }}
+
     defaults:
       run:
         shell: bash
 
     steps:
+      - name: Set up QEMU
+        if: matrix.arch == 'arm64'
+        uses: docker/setup-qemu-action@v3
+
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
@@ -37,7 +53,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /github/home/FineVision
-          key: fins-sdk-v2-dev
+          key: fins-sdk-v2-${{ matrix.os }}-${{ matrix.arch }}
 
       - name: Install Fins-SDK
         if: steps.cache-fins-sdk.outputs.cache-hit != 'true'
@@ -47,7 +63,6 @@ jobs:
       - name: Install Fins-CLI
         run: |
           curl -fsSL https://raw.githubusercontent.com/Han-Yu-Meng/fins-cli/main/install.sh | sudo bash || true
-          
           mkdir -p /github/home/.fins
           cp -r /root/.fins/* /github/home/.fins/ || true
 
@@ -55,24 +70,28 @@ jobs:
         run: |
           mkdir -p /github/home/.fins/logs
           nohup finsd > /github/home/.fins/logs/finsd_boot.log 2>&1 &
-          
-          sleep 8
-
-          fins workspace add ci
-          fins workspace list
+          [[ "${{ matrix.arch }}" == "arm64" ]] && sleep 15 || sleep 8
+          fins workspace add ci .
+          fins agent build || true
+          fins inspect build || true
 
       - name: Solve Dependencies
         run: |
-          source /opt/ros/humble/setup.bash
+          source /opt/ros/${{ matrix.distro }}/setup.bash
           sudo fins dep solve ${{ steps.pkg_info.outputs.PACKAGE_NAME }}
+          
+          pkill finsd || true
+          sleep 2
+          nohup finsd > /github/home/.fins/logs/finsd_build.log 2>&1 &
+          [[ "${{ matrix.arch }}" == "arm64" ]] && sleep 15 || sleep 8
 
       - name: Build Plugins
         run: |
-          source /opt/ros/humble/setup.bash
+          source /opt/ros/${{ matrix.distro }}/setup.bash
           fins build --all
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: fins-plugins
+          name: fins-plugins-${{ matrix.os }}-${{ matrix.arch }}
           path: /github/home/.fins/install/libci_${{ steps.pkg_info.outputs.PACKAGE_NAME }}.so
