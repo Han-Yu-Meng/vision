@@ -75,4 +75,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: fins-plugins
-          path: /github/home/.fins/install/lib/libci_${{ steps.pkg_info.outputs.PACKAGE_NAME }}.so
+          path: /github/home/.fins/install/libci_${{ steps.pkg_info.outputs.PACKAGE_NAME }}.so
