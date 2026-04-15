@@ -29,6 +29,7 @@ jobs:
 
     steps:
       - name: Set up QEMU
+        if: matrix.arch == 'arm64'
         uses: docker/setup-qemu-action@v3
 
       - name: Checkout Repository
