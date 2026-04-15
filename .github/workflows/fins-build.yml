@@ -14,6 +14,7 @@ jobs:
     defaults:
       run:
         shell: bash
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -29,14 +30,13 @@ jobs:
         id: cache-fins-sdk
         uses: actions/cache@v4
         with:
-          path: /opt/FineVision
-          key: fins-sdk-v2-dev-${{ runner.os }}
+          path: /github/home/FineVision
+          key: fins-sdk-v2-dev
 
       - name: Install Fins-SDK
         if: steps.cache-fins-sdk.outputs.cache-hit != 'true'
         run: |
-          cd /opt
-          git clone --depth 1 -b "V2(dev)" --recursive --shallow-submodules https://gitee.com/fins-robotics/FineVision
+          git clone --depth 1 -b "V2(dev)" --recursive --shallow-submodules https://gitee.com/fins-robotics/FineVision /github/home/FineVision
 
       - name: Install Fins-CLI
         run: |
@@ -54,6 +54,9 @@ jobs:
 
           fins workspace add ci
           fins workspace list
+          
+          fins agent build || true
+          fins inspect build || true
 
       - name: Solve Dependencies
         run: |
