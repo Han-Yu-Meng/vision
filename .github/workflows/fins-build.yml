@@ -45,16 +45,11 @@ jobs:
 
       - name: Setup FINS Workspace
         run: |
-          # 1. 启动后台守护进程 (加上 nohup 确保稳定)
           mkdir -p /github/home/.fins/logs
           nohup finsd > /github/home/.fins/logs/finsd_boot.log 2>&1 &
           
-          # 2. 等待 finsd 完全启动（增加到 8 秒，确保 API 准备就绪）
           sleep 8
-          
-          # 3. 核心修正：使用环境变量进入代码目录
-          cd ${{ github.workspace }}
-          
+
           # 4. 注册工作区
           fins workspace add ci_robot
           fins workspace list
@@ -62,13 +57,11 @@ jobs:
       - name: Solve Dependencies
         run: |
           source /opt/ros/humble/setup.bash
-          cd ${{ github.workspace }}
           sudo fins dep solve vision
 
       - name: Build Plugins
         run: |
           source /opt/ros/humble/setup.bash
-          cd ${{ github.workspace }}
           fins build --all
 
       - name: Upload Artifacts
