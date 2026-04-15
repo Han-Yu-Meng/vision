@@ -24,7 +24,13 @@ jobs:
       - name: Install Basic Tools
         run: |
           apt update
-          apt install -y curl git sudo jq ninja-build software-properties-common bc wget
+          apt install -y curl git sudo jq ninja-build software-properties-common bc wget python3-yaml
+
+      - name: Extract Package Name
+        id: pkg_info
+        run: |
+          PKG_NAME=$(python3 -c "import yaml; print(yaml.safe_load(open('package.yaml'))['name'])")
+          echo "PACKAGE_NAME=$PKG_NAME" >> $GITHUB_OUTPUT
 
       - name: Cache Fins-SDK
         id: cache-fins-sdk
@@ -54,14 +60,11 @@ jobs:
 
           fins workspace add ci
           fins workspace list
-          
-          fins agent build || true
-          fins inspect build || true
 
       - name: Solve Dependencies
         run: |
           source /opt/ros/humble/setup.bash
-          sudo fins dep solve vision
+          sudo fins dep solve ${{ steps.pkg_info.outputs.PACKAGE_NAME }}
 
       - name: Build Plugins
         run: |
@@ -72,4 +75,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: fins-plugins
-          path: /github/home/.fins/install/
+          path: /github/home/.fins/install/lib/libci_${{ steps.pkg_info.outputs.PACKAGE_NAME }}.so
