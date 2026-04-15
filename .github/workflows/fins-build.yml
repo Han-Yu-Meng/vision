@@ -1,0 +1,63 @@
+name: FINS Plugin CI/CD
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    container:
+      image: osrf/ros:humble-desktop
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Basic Tools
+        run: |
+          apt update && apt install -y curl git sudo jq ninja-build software-properties-common
+
+      - name: Install Fins-SDK
+        run: |
+          cd ~
+          git clone https://gitee.com/fins-robotics/FineVision -b "V2(dev)" --recursive
+
+      - name: Install Fins-CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/Han-Yu-Meng/fins-cli/main/install.sh | sudo bash
+          fins agent build
+          fins inspect build
+
+      - name: Setup FINS Workspace
+        run: |
+          finsd &
+          sleep 3
+          
+          cd ${{ github.workspace }}
+          fins workspace add ci_robot
+          fins workspace list
+
+      - name: Solve Dependencies
+        run: |
+          source /opt/ros/humble/setup.bash
+          cd ${{ github.workspace }}
+          
+          sudo fins dep solve vision
+
+      - name: Build Plugins
+        run: |
+          source /opt/ros/humble/setup.bash
+          cd ${{ github.workspace }}
+          fins build --all
+
+      - name: Upload Shared Libraries (.so)
+        uses: actions/upload-artifact@v4
+        with:
+          name: fins-compiled-plugins
+          path: ~/.fins/install/
+          retention-days: 7
