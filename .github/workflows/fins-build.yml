@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: ${{ (matrix.arch == 'arm64') && 'ubuntu-24.04-arm64' || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -22,7 +22,6 @@ jobs:
 
     container:
       image: ${{ matrix.image }}
-      options: ${{ (matrix.arch == 'arm64') && '--platform linux/arm64' || '' }}
 
     defaults:
       run:
@@ -30,7 +29,6 @@ jobs:
 
     steps:
       - name: Set up QEMU
-        if: matrix.arch == 'arm64'
         uses: docker/setup-qemu-action@v3
 
       - name: Checkout Repository
