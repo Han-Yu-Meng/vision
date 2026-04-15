@@ -23,11 +23,18 @@ jobs:
           apt update
           apt install -y curl git sudo jq ninja-build software-properties-common bc wget
 
-      # 3. 安装 Fins-SDK
+      - name: Cache Fins-SDK
+        id: cache-fins-sdk
+        uses: actions/cache@v4
+        with:
+          path: /opt/FineVision
+          key: fins-sdk-v2-dev-${{ runner.os }}
+
       - name: Install Fins-SDK
+        if: steps.cache-fins-sdk.outputs.cache-hit != 'true'
         run: |
           cd /opt
-          git clone https://gitee.com/fins-robotics/FineVision -b "V2(dev)" --recursive
+          git clone --depth 1 -b "V2(dev)" --recursive --shallow-submodules https://gitee.com/fins-robotics/FineVision
 
       - name: Install Fins-CLI
         run: |
@@ -38,11 +45,19 @@ jobs:
 
       - name: Setup FINS Workspace
         run: |
-          finsd &
-          sleep 5
+          # 1. 启动后台守护进程 (加上 nohup 确保稳定)
+          mkdir -p /github/home/.fins/logs
+          nohup finsd > /github/home/.fins/logs/finsd_boot.log 2>&1 &
           
+          # 2. 等待 finsd 完全启动（增加到 8 秒，确保 API 准备就绪）
+          sleep 8
+          
+          # 3. 核心修正：使用环境变量进入代码目录
           cd ${{ github.workspace }}
+          
+          # 4. 注册工作区
           fins workspace add ci_robot
+          fins workspace list
 
       - name: Solve Dependencies
         run: |
