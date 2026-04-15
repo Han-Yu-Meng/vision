@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-22.04
     container:
       image: ros:humble-ros-base
-	  
+
     defaults:
       run:
         shell: bash
@@ -54,8 +54,7 @@ jobs:
           
           sleep 8
 
-          # 4. 注册工作区
-          fins workspace add ci_robot
+          fins workspace add ci
           fins workspace list
 
       - name: Solve Dependencies
