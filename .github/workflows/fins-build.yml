@@ -36,7 +36,14 @@ jobs:
 
       - name: Install Basic Tools
         run: |
-          apt update
+          if [[ "${{ matrix.arch }}" == "arm64" ]]; then
+            sed -i 's|http://archive.ubuntu.com|http://ports.ubuntu.com|g' /etc/apt/sources.list
+            sed -i 's|http://security.ubuntu.com|http://ports.ubuntu.com|g' /etc/apt/sources.list
+          fi
+          
+          echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/80-retries
+          
+          apt update -o Acquire::ForceIPv4=true --fix-missing
           apt install -y curl git sudo jq ninja-build software-properties-common bc wget python3-yaml
 
       - name: Extract Package Name
