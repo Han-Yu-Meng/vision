@@ -39,6 +39,9 @@ jobs:
           if [[ "${{ matrix.arch }}" == "arm64" ]]; then
             sed -i 's|http://archive.ubuntu.com|http://ports.ubuntu.com|g' /etc/apt/sources.list
             sed -i 's|http://security.ubuntu.com|http://ports.ubuntu.com|g' /etc/apt/sources.list
+          else
+            sed -i 's|http://archive.ubuntu.com|http://mirrors.aliyun.com|g' /etc/apt/sources.list
+            sed -i 's|http://security.ubuntu.com|http://mirrors.aliyun.com|g' /etc/apt/sources.list
           fi
           
           echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/80-retries
