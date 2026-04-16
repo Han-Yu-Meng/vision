@@ -2,9 +2,9 @@ name: FINS Plugin CI/CD
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "**" ]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: [ "**" ]
 
 jobs:
   build:
@@ -33,6 +33,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
+
+      - name: Check for package.yaml
+        run: |
+          if [ ! -f "package.yaml" ]; then
+            echo "Error: package.yaml not found. This repository might not be a valid FINS plugin. Exiting..."
+            exit 1
+          fi
 
       - name: Install Basic Tools
         run: |
@@ -86,7 +93,7 @@ jobs:
         run: |
           mkdir -p /github/home/.fins/logs
           nohup finsd > /github/home/.fins/logs/finsd_boot.log 2>&1 &
-          sleep 10
+          sleep 3
           fins workspace add remote
 
       - name: Solve Dependencies
@@ -97,7 +104,7 @@ jobs:
           pkill finsd || true
           sleep 2
           nohup finsd > /github/home/.fins/logs/finsd_build.log 2>&1 &
-          sleep 10
+          sleep 3
 
       - name: Build Plugins
         run: |
@@ -149,3 +156,5 @@ jobs:
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+          
