@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-22.04-arm' || 'ubuntu-22.04' }}
-    timeout-minutes: 15
+    timeout-minutes: 10
     
     strategy:
       fail-fast: false
@@ -61,16 +61,30 @@ jobs:
             fi
           fi
           
-          echo 'Acquire::Retries "5";' > /etc/apt/apt.conf.d/80-retries
+          # 移除容器默认的 apt 清理脚本，并强制保留下载的 .deb 包
+          rm -f /etc/apt/apt.conf.d/docker-clean || true
+          echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/01keep-debs
+          
+          echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/80-retries
+          echo 'Acquire::http::Timeout "10";' >> /etc/apt/apt.conf.d/80-retries
+          echo 'Acquire::ForceIPv4 "true";' >> /etc/apt/apt.conf.d/80-retries
           
           apt update -o Acquire::ForceIPv4=true --fix-missing
-          apt install -y curl git sudo jq ninja-build software-properties-common bc wget python3-yaml zip
+          apt install -y --no-install-recommends curl git sudo jq ninja-build software-properties-common bc wget python3-yaml zip
 
       - name: Extract Package Name
         id: pkg_info
         run: |
           PKG_NAME=$(python3 -c "import yaml; print(yaml.safe_load(open('package.yaml'))['name'])")
           echo "PACKAGE_NAME=$PKG_NAME" >> $GITHUB_OUTPUT
+
+      - name: Cache APT Archives
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/apt/archives
+          key: apt-cache-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('**/package.yaml') }}
+          restore-keys: |
+            apt-cache-${{ matrix.os }}-${{ matrix.arch }}-
 
       - name: Cache Fins-SDK
         id: cache-fins-sdk
@@ -126,18 +140,35 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    if: |
+      always() &&
+      github.event_name == 'push' && 
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') &&
+      (needs.build.result == 'success' || needs.build.result == 'failure' || needs.build.result == 'cancelled')
     permissions:
       contents: write
     steps:
       - name: Download Artifacts
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           path: final-release
           pattern: Ubuntu-*
           merge-multiple: true
 
+      - name: Check if any artifacts were downloaded
+        id: check_artifacts
+        run: |
+          if [ -d "final-release" ] && [ "$(ls -A final-release)" ]; then
+            echo "Artifacts found!"
+            echo "has_files=true" >> $GITHUB_OUTPUT
+          else
+            echo "No artifacts found. Skipping release creation."
+            echo "has_files=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Create Release
+        if: steps.check_artifacts.outputs.has_files == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ci-${{ github.sha }}
@@ -145,10 +176,10 @@ jobs:
           body: |
             Automated build for commit ${{ github.sha }}
             Build results from GHA CI/CD.
+            *Note: This release may be a partial success. Some platforms might have failed or timed out.*
           files: final-release/*
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
           
