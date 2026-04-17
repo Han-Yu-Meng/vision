@@ -11,10 +11,10 @@
 
 #include "compute/preprocess.hpp"
 #include "compute/undistort.hpp"
+#include "compute/quality.hpp"
 
 // TODO: to be added later
 // #include "compute/calibration.hpp"
-// #include "compute/quality.hpp"
 
 #include "sinks/display.hpp"
 #include "sinks/rtsp_streamer.hpp"
