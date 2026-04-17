@@ -22,7 +22,7 @@ public:
     set_description("Generates images by reading from a specified file at regular intervals.");
     set_category("Vision>Source");
 
-    register_output<0, cv::Mat>("image");
+    register_output<cv::Mat>("image");
     register_parameter<std::string>("path", &ImgSource::update_path, "/path/to/image.jpg");
     register_parameter<int>("interval_ms", &ImgSource::update_interval, 1000);
   }
@@ -78,7 +78,7 @@ private:
       }
 
       if (!current_img.empty()) {
-        send<0>(current_img, fins::now());
+        send("image", current_img);
       }
 
       std::this_thread::sleep_for(std::chrono::milliseconds(current_interval));

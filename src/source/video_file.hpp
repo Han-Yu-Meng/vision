@@ -25,7 +25,7 @@ public:
     set_description("Reads video frames from file");
     set_category("Vision>Source");
 
-    register_output<0, cv::Mat>("image");
+    register_output<cv::Mat>("image");
     register_parameter<std::string>("path", &VideoSource::update_path, "/path/to/video.mp4");
   }
 
@@ -102,7 +102,7 @@ private:
       }
 
       if (has_frame) {
-        send<0>(frame, fins::now());
+        send("image", frame);
       }
 
       int sleep_ms = (current_fps > 0) ? static_cast<int>(1000.0 / current_fps) : 40;

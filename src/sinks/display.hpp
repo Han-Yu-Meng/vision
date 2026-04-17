@@ -25,7 +25,7 @@ public:
     set_description("Display images using OpenCV's imshow function.");
     set_category("Vision>Display");
 
-    register_input<0, cv::Mat>("image", &ImageDisplay::on_image);
+    register_input<cv::Mat>("image", &ImageDisplay::on_image);
     register_parameter<std::string>("title", &ImageDisplay::update_title, "title");
   }
 
@@ -36,15 +36,15 @@ public:
     window_title_ = title;
   }
 
-  void on_image(const fins::Msg<cv::Mat> &msg) {
-    if (!is_running_ || !msg)
+  void on_image(const cv::Mat &msg) {
+    if (!is_running_ || msg.empty())
       return;
 
     std::unique_lock<std::mutex> lock(mutex_);
     if (frame_queue_.size() > 2) {
       frame_queue_.pop();
     }
-    frame_queue_.push(*msg);
+    frame_queue_.push(msg);
     cond_.notify_one();
   }
 
@@ -150,7 +150,7 @@ public:
     set_description("Show depth image with pseudo-color colormap");
     set_category("Vision>Display");
 
-    register_input<0, cv::Mat>("depth", &ImageDisplay::on_image);
+    register_input<cv::Mat>("depth", &ImageDisplay::on_image);
     register_parameter<std::string>("title", &ImageDisplay::update_title);
   }
 

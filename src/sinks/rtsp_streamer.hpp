@@ -22,7 +22,7 @@ public:
     set_description("Push video stream to RTSP server using GStreamer");
     set_category("Vision>Streaming");
 
-    register_input<0, cv::Mat>("image", &RtspStreamer::on_image);
+    register_input<cv::Mat>("image", &RtspStreamer::on_image);
     register_parameter<std::string>("rtsp_url", &RtspStreamer::update_url, "rtsp://[username:password@]ip_address[:port]/path");
     register_parameter<int>("fps", &RtspStreamer::update_fps, 30);
     register_parameter<int>("bitrate_kbps", &RtspStreamer::update_bitrate, 2048);
@@ -75,8 +75,8 @@ public:
     }
   }
 
-  void on_image(const fins::Msg<cv::Mat> &msg) {
-    if (!msg || msg->empty())
+  void on_image(const cv::Mat &msg) {
+    if (msg.empty())
       return;
 
     std::lock_guard<std::mutex> lock(mutex_);
@@ -84,7 +84,7 @@ public:
     if (url_.empty())
       return;
 
-    cv::Size frame_size = msg->size();
+    cv::Size frame_size = msg.size();
 
     if (restart_needed_ || !writer_.isOpened() || frame_size != current_size_) {
       close_writer();
@@ -113,7 +113,7 @@ public:
     }
 
     if (writer_.isOpened()) {
-      writer_.write(*msg);
+      writer_.write(msg);
     }
   }
 

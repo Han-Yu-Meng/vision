@@ -23,7 +23,7 @@ public:
     set_description("OpenCV Integrated Camera");
     set_category("Vision>Source");
 
-    register_output<0, cv::Mat>("image");
+    register_output<cv::Mat>("image");
     register_parameter<std::string>("device", &IntegratedCameraSource::update_device, "/dev/video0");
   }
 
@@ -76,7 +76,7 @@ private:
       if (cap_.read(frame)) {
         cv::putText(frame, std::to_string(++frame_count_) + " frame", cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1,
                     cv::Scalar(0, 255, 0), 2);
-        send<0>(frame, fins::now());
+        send("image", frame);
       } else {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }

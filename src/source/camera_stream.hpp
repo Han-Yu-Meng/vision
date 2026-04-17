@@ -23,7 +23,7 @@ public:
     set_description("OpenCV Streaming Camera, reads from URL");
     set_category("Vision>Streaming");
 
-    register_output<0, cv::Mat>("image");
+    register_output<cv::Mat>("image");
     register_parameter<std::string>("url", &StreamingCameraSource::update_url, "https://192.168.1.2:8080/video");
   }
 
@@ -80,7 +80,7 @@ private:
       cv::Mat frame;
       if (cap_.read(frame)) {
         cv::putText(frame, std::to_string(++frame_count_) + " frame", cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
-        send<0>(frame, fins::now());
+        send("image", frame);
       } else {
         close_camera(); // Reconnect on failure
         std::this_thread::sleep_for(std::chrono::milliseconds(10));

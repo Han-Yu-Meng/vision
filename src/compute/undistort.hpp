@@ -21,8 +21,8 @@ public:
     set_description("Undistort image using parameters (camera_matrix, dist_coeffs)");
     set_category("Vision>Preprocess");
 
-    register_input<0, cv::Mat>("image", &ImageUndistort::on_image);
-    register_output<0, cv::Mat>("image");
+    register_input<cv::Mat>("image", &ImageUndistort::on_image);
+    register_output<cv::Mat>("image");
 
     register_parameter<std::vector<double>>("camera_matrix", &ImageUndistort::update_camera_matrix, {1,0,0, 0,1,0, 0,0,1});
     register_parameter<std::vector<double>>("dist_coeffs", &ImageUndistort::update_dist_coeffs, {0,0,0,0,0,0,0,0,0});
@@ -68,27 +68,25 @@ public:
     }
   }
 
-  void on_image(const fins::Msg<cv::Mat>& msg) {
-    if (!msg || msg->empty()) return;
+  void on_image(const cv::Mat& msg) {
+    if (msg.empty()) return;
 
     std::lock_guard<std::mutex> lock(mutex_);
 
-    // Check if parameters are valid. If not, pass through original image.
     if (camera_matrix_.empty() || dist_coeffs_.empty()) {
-      send<0>(*msg, msg.acq_time);
+      send("image", msg);
       return;
     }
 
-    // Init maps if needed or size changed
-    if (map1_.empty() || msg->size() != image_size_) {
-      image_size_ = msg->size();
+    if (map1_.empty() || msg.size() != image_size_) {
+      image_size_ = msg.size();
       cv::initUndistortRectifyMap(camera_matrix_, dist_coeffs_, cv::Mat(), 
                                   camera_matrix_, image_size_, CV_16SC2, map1_, map2_);
     }
 
     cv::Mat undistorted;
-    cv::remap(*msg, undistorted, map1_, map2_, cv::INTER_LINEAR);
-    send<0>(undistorted, msg.acq_time);
+    cv::remap(msg, undistorted, map1_, map2_, cv::INTER_LINEAR);
+    send("image", undistorted);
   }
 
 private:
