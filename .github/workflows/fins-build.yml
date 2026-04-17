@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-22.04-arm' || 'ubuntu-22.04' }}
-    timeout-minutes: 10
+    timeout-minutes: 15
     
     strategy:
       fail-fast: false
@@ -35,11 +35,25 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Fix Permissions for Cache
+        run: |
+          sudo chown -R $(id -u):$(id -g) .
+
       - name: Check for package.yaml
         run: |
           if [ ! -f "package.yaml" ]; then
             echo "Error: package.yaml not found. This repository might not be a valid FINS plugin. Exiting..."
             exit 1
+          fi
+
+      - name: Run Cppcheck
+        run: |
+          cppcheck --enable=all --inline-suppr --std=c++17 --output-file=cppcheck_report.txt src/
+          if [ -s cppcheck_report.txt ]; then
+            echo "Cppcheck found issues:"
+            cat cppcheck_report.txt
+          else
+            echo "No Cppcheck issues found."
           fi
 
       - name: Install Basic Tools
@@ -61,7 +75,6 @@ jobs:
             fi
           fi
           
-          # 移除容器默认的 apt 清理脚本，并强制保留下载的 .deb 包
           rm -f /etc/apt/apt.conf.d/docker-clean || true
           echo 'Binary::apt::APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/01keep-debs
           
@@ -70,7 +83,7 @@ jobs:
           echo 'Acquire::ForceIPv4 "true";' >> /etc/apt/apt.conf.d/80-retries
           
           apt update -o Acquire::ForceIPv4=true --fix-missing
-          apt install -y --no-install-recommends curl git sudo jq ninja-build software-properties-common bc wget python3-yaml zip
+          apt install -y --no-install-recommends curl git sudo jq ninja-build software-properties-common bc wget python3-yaml zip cppcheck
 
       - name: Extract Package Name
         id: pkg_info
@@ -81,8 +94,8 @@ jobs:
       - name: Cache APT Archives
         uses: actions/cache@v4
         with:
-          path: /var/cache/apt/archives
-          key: apt-cache-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('**/package.yaml') }}
+          path: apt-cache
+          key: apt-cache-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('package.yaml') }}
           restore-keys: |
             apt-cache-${{ matrix.os }}-${{ matrix.arch }}-
 
@@ -93,6 +106,14 @@ jobs:
           path: /github/home/FineVision
           key: fins-sdk-v2-${{ matrix.os }}-${{ matrix.arch }}
 
+      - name: Cache Fins Dependencies
+        uses: actions/cache@v4
+        with:
+          path: /github/home/.fins/dependencies
+          key: fins-deps-${{ matrix.os }}-${{ matrix.arch }}-${{ hashFiles('package.yaml') }}
+          restore-keys: |
+            fins-deps-${{ matrix.os }}-${{ matrix.arch }}-
+
       - name: Install Fins-SDK
         if: steps.cache-fins-sdk.outputs.cache-hit != 'true'
         run: |
@@ -100,7 +121,9 @@ jobs:
 
       - name: Install Fins-CLI
         run: |
-          curl -fsSL https://raw.githubusercontent.com/Han-Yu-Meng/fins-cli/main/install.sh | sudo bash || true
+          for i in {1..5}; do
+            curl -fsSL --connect-timeout 5 --retry 3 https://raw.githubusercontent.com/Han-Yu-Meng/fins-cli/main/install.sh | sudo bash && break || sleep 5
+          done
           mkdir -p /github/home/.fins
           cp -r /root/.fins/* /github/home/.fins/ || true
 
@@ -114,6 +137,11 @@ jobs:
       - name: Solve Dependencies
         run: |
           source /opt/ros/${{ matrix.distro }}/setup.bash
+          
+          mkdir -p apt-cache
+          sudo rm -rf /var/cache/apt/archives
+          sudo ln -s $(pwd)/apt-cache /var/cache/apt/archives
+          
           sudo fins dep solve ${{ steps.pkg_info.outputs.PACKAGE_NAME }}
           
           pkill finsd || true
@@ -142,8 +170,7 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       always() &&
-      github.event_name == 'push' && 
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') &&
+      github.event_name == 'push' &&
       (needs.build.result == 'success' || needs.build.result == 'failure' || needs.build.result == 'cancelled')
     permissions:
       contents: write
@@ -176,7 +203,6 @@ jobs:
           body: |
             Automated build for commit ${{ github.sha }}
             Build results from GHA CI/CD.
-            *Note: This release may be a partial success. Some platforms might have failed or timed out.*
           files: final-release/*
           draft: false
           prerelease: false
