@@ -5,6 +5,6 @@ maintainers:
   - name: "fins"
     email: "fins@sjtu.edu.cn"
 depends:
-  OpenCV: "system"
+  OpenCV: "4.13.0"
 licenses:
   - "MPL-2.0"
