@@ -32,6 +32,7 @@ public:
   void initialize() override {
     running_ = false;
     std::lock_guard<std::mutex> lock(mutex_);
+    logger->info("OpenCV Build Information:\n{}", cv::getBuildInformation());
   }
 
   void update_path(const std::string &path) {
