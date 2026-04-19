@@ -1,36 +1,107 @@
-# Vision 库
+# Vision Framework
 
-依赖 OpenCV（及可选 Python 环境），提供从相机/文件读取、图像预处理、质量评估以及可视化节点。
+This is a computer vision framework built on the FINS architecture, providing modular nodes for image processing, camera sources, calibration, and visualization.
 
-## 节点分组
+## Architecture Overview
 
-### 1. 图像/视频源
+The framework is organized into several categories:
+- **Sources**: Camera input modules
+- **Compute**: Image processing and calibration algorithms  
+- **Sinks**: Output and visualization modules
 
-| 节点 | 功能 | 输出 | Extern |
-| --- | --- | --- | --- |
-| `image_source` | 轮询读取单帧图片。 | `cv::Mat` | `path`、`interval_ms` |
-| `video_source` | 按 FPS 或指定间隔读取视频帧。 | `cv::Mat` | `path`、`interval_ms` |
-| `camera` | 共享 OpenCV 摄像头（默认 `/dev/video0`）。 | `cv::Mat` | `device` |
+## Source Modules
 
-### 2. 显示
+### IntegratedCameraSource (`src/source/camera_integrated.hpp`)
+- **Function**: Captures video from integrated cameras using OpenCV
+- **Output**: `cv::Mat` image frames
+- **Category**: `Vision>Source`
 
-| 节点 | 功能 | 输入 | Extern |
-| --- | --- | --- | --- |
-| `image_display` | 独立线程弹窗展示图像。 | `cv::Mat` | `title` |
+### StreamingCameraSource (`src/source/camera_stream.hpp`)
+- **Function**: Captures video streams from network URLs
+- **Output**: `cv::Mat` image frames
+- **Category**: `Vision>Streaming`
 
-### 3. 预处理（C++）
+## Compute Modules
 
-`img_pretreat_nodes` 内含多种常用算子：
-`Grey`、`HSV`、`Resize`、`RGBEnhance`、`Contrast`、`Brightness`、`Sharpen`、`WhiteBalance`、`GaussianBlur`、`MedianBlur`、`BilateralFilter`、`Dilate`、`Erode`、`MorphOpen`、`MorphClose`、`Canny`、`Contours`、`PutText`、`DrawCross`。
+### Preprocessing Functions (`src/compute/preprocess.hpp`)
+A comprehensive collection of image preprocessing algorithms:
 
-### 4. Python 扩展
+#### Color Space Conversion
+- **Grey**: Converts images to grayscale
+- **HSV**: Converts BGR images to HSV color space
 
-`img_pretreat_py_nodes` 通过嵌入式 Python 暴露：
+#### Image Enhancement
+- **RGBEnhance**: Adjusts individual RGB channel intensities (0-10 range)
+- **Contrast**: Adjusts image contrast using multiplicative scaling
+- **Brightness**: Adjusts image brightness using additive offset
+- **Sharpen**: Applies sharpening filter with adjustable intensity
+- **WhiteBalance**: Performs automatic white balance based on gray world assumption
 
-- `PyYOLO`、`PyYOLOSeg`、`PyGrey`、`PyRGBEnhance`
+#### Geometric Operations
+- **Resize**: Resizes images to specified dimensions
+- **HomographyWarp**: Applies perspective transformation using 3x3 homography matrix
 
-### 5. 质量评估
+#### Filtering Operations
+- **GaussianBlur**: Applies Gaussian smoothing filter
+- **MedianBlur**: Applies median filter for noise reduction
+- **BilateralFilter**: Edge-preserving smoothing filter
 
-`img_quality_assessments_nodes` 包含 `PSNR`、`SSIM`、`MSE`、`MAE`、`UQI`、`NCC` 等指标，可对两张图像进行数值评价。
+#### Morphological Operations
+- **Dilate**: Morphological dilation
+- **Erode**: Morphological erosion
+- **MorphOpen**: Morphological opening (erosion followed by dilation)
+- **MorphClose**: Morphological closing (dilation followed by erosion)
 
-所有节点可按需 `NewStep(...)` 组合：例如 “视频源 → Canny → ImageDisplay” 或 “相机 → Python YOLO → ROS 发布”。
+#### Feature Detection
+- **Canny**: Canny edge detection with dual thresholds
+- **Contours**: Detects and draws image contours
+- **HoughLinesP**: Probabilistic Hough line detection
+- **HoughCircles**: Hough circle detection with radius constraints
+
+#### Segmentation
+- **ColorThreshold**: HSV color space segmentation with configurable ranges
+
+#### Annotation
+- **PutText**: Overlays text on images (supports multi-line)
+- **DrawCross**: Draws cross markers at specified coordinates
+
+#### Noise Generation
+- **SaltPepperNoise**: Adds salt and pepper noise with configurable probabilities
+
+### Calibration Module (`src/compute/calibration.hpp`)
+#### AprilTagDetection
+- **Function**: Detects AprilTag fiducial markers in images
+- **Input**: `cv::Mat` undistorted image
+- **Output**: `AprilTagPoints` (corner coordinates)
+- **Category**: `Vision>Calibration`
+
+#### PoseEstimation
+- **Function**: Estimates 6DOF pose from AprilTag detections
+- **Input**: `AprilTagPoints` corner coordinates
+- **Output**: `geometry_msgs::msg::TransformStamped`
+- **Category**: `Vision>Calibration`
+
+### Image Undistortion (`src/compute/undistort.hpp`)
+#### ImageUndistort
+- **Function**: Removes lens distortion from images using camera calibration parameters
+- **Input**: `cv::Mat` distorted image
+- **Output**: `cv::Mat` undistorted image
+- **Category**: `Vision>Preprocess`
+
+## Sink Modules
+
+### ImageDisplay (`src/sinks/display.hpp`)
+#### ImageDisplay
+- **Function**: Displays images using OpenCV's imshow functionality
+- **Input**: `cv::Mat` image frames
+- **Category**: `Vision>Display`
+
+#### DepthDisplay
+- **Function**: Specialized display for depth images with pseudo-color mapping
+- **Input**: `cv::Mat` depth image
+- **Category**: `Vision>Display`
+
+### RtspStreamer (`src/sinks/rtsp_streamer.hpp`)
+- **Function**: Streams video to RTSP servers using GStreamer
+- **Input**: `cv::Mat` image frames
+- **Category**: `Vision>Streaming`
