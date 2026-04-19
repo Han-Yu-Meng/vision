@@ -19,4 +19,4 @@
 #include "sinks/display.hpp"
 #include "sinks/rtsp_streamer.hpp"
 
-DEFINE_PLUGIN_ENTRY()
+DEFINE_PLUGIN_ENTRY(fins::STATEFUL)
