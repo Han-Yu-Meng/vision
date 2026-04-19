@@ -92,7 +92,8 @@ jobs:
             libswscale-dev \
             libswresample-dev \
             libavfilter-dev \
-            libavdevice-dev
+            libavdevice-dev \
+            libgtk-3-dev
 
       - name: Extract Package Name
         id: pkg_info
