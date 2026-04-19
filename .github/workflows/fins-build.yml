@@ -99,12 +99,18 @@ jobs:
           restore-keys: |
             apt-cache-${{ matrix.os }}-${{ matrix.arch }}-
 
+      - name: Get FINS-SDK Remote Hash
+        id: sdk_ref
+        run: |
+          SDK_SHA=$(git ls-remote https://gitee.com/fins-robotics/FineVision.git refs/heads/"V2(dev)" | cut -f1)
+          echo "sha=$SDK_SHA" >> $GITHUB_OUTPUT
+
       - name: Cache Fins-SDK
         id: cache-fins-sdk
         uses: actions/cache@v4
         with:
           path: /github/home/FineVision
-          key: fins-sdk-v2-${{ matrix.os }}-${{ matrix.arch }}
+          key: fins-sdk-${{ steps.sdk_ref.outputs.sha }}-${{ matrix.os }}-${{ matrix.arch }}
 
       - name: Cache Fins Dependencies
         uses: actions/cache@v4
@@ -117,6 +123,7 @@ jobs:
       - name: Install Fins-SDK
         if: steps.cache-fins-sdk.outputs.cache-hit != 'true'
         run: |
+          echo "SDK version changed or no cache found. Cloning latest..."
           git clone --depth 1 -b "V2(dev)" --recursive --shallow-submodules https://gitee.com/fins-robotics/FineVision /github/home/FineVision
 
       - name: Install Fins-CLI
