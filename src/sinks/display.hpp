@@ -49,20 +49,17 @@ public:
   }
 
   void run() override {
+    if (is_running_) return;
     is_running_ = true;
     display_thread_ = std::thread(&ImageDisplay::display_loop, this);
   }
 
   void pause() override {
-    {
-      std::lock_guard<std::mutex> lock(mutex_);
-      is_running_ = false;
-    }
+    is_running_ = false;
     cond_.notify_all();
     if (display_thread_.joinable()) {
       display_thread_.join();
     }
-    cv::destroyAllWindows();
   }
 
   void reset() override {
@@ -72,45 +69,43 @@ public:
     std::swap(frame_queue_, empty);
   }
 
+  virtual ~ImageDisplay() {
+    is_running_ = false;
+    cond_.notify_all();
+    if (display_thread_.joinable()) {
+      display_thread_.join();
+    }
+  }
+
 protected:
   virtual void process_frame(const cv::Mat &src, cv::Mat &dst) { dst = src; }
 
   void display_loop() {
-    std::string current_title = window_title_;
-    if (current_title.empty())
-      current_title = "ImageDisplay";
+    std::string current_title = "";
+    {
+       std::lock_guard<std::mutex> lock(mutex_);
+       current_title = window_title_.empty() ? "ImageDisplay" : window_title_;
+    }
 
     bool window_created = false;
 
     while (is_running_) {
       cv::Mat frame;
       bool has_frame = false;
-      std::string next_title;
 
       {
         std::unique_lock<std::mutex> lock(mutex_);
+        cond_.wait_for(lock, std::chrono::milliseconds(100), [this] { 
+          return !frame_queue_.empty() || !is_running_; 
+        });
 
-        if (!window_title_.empty())
-          next_title = window_title_;
-
-        cond_.wait(lock, [this] { return !frame_queue_.empty() || !is_running_; });
-
-        if (!is_running_)
-          break;
+        if (!is_running_) break;
 
         if (!frame_queue_.empty()) {
           frame = frame_queue_.front();
           frame_queue_.pop();
           has_frame = true;
         }
-      }
-
-      if (!next_title.empty() && next_title != current_title) {
-        if (window_created) {
-          cv::destroyWindow(current_title);
-          window_created = false;
-        }
-        current_title = next_title;
       }
 
       if (has_frame && !frame.empty()) {
@@ -125,13 +120,15 @@ protected:
         }
       }
 
-      if (window_created) {
-        cv::waitKey(1);
-      }
+      cv::waitKey(1); 
     }
 
     if (window_created) {
-      cv::destroyWindow(current_title);
+      try {
+        cv::destroyWindow(current_title);
+        cv::waitKey(1);
+        cv::waitKey(1);
+      } catch (...) {}
     }
   }
 
